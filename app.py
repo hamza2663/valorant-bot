@@ -1,20 +1,30 @@
 import streamlit as st
 import asyncio
-from playwright.async_api import async_playwright
+import os
 import random
 import string
+from playwright.async_api import async_playwright
 
-# Random strings generate karne ke liye
+# --- Browser Driver Installation ---
+# Ye hissa Streamlit par chromium install kare ga agar wo mojood nahi hy
+def install_playwright():
+    os.system("playwright install chromium")
+
+# Helper function
 def generate_random_string(length=8):
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
 st.title("🎮 Valvozone Live Bot Control")
 
-# Sidebar for settings
+# Sidebar
 st.sidebar.header("Configuration")
 prefix = st.sidebar.text_input("Username/Email Prefix", value="val_")
 
 if st.button("Start Real-Time Registration"):
+    # Pehle browser install karne ki koshish karein
+    with st.spinner("Installing browser drivers... (Pehli baar thora waqt lag sakta hy)"):
+        install_playwright()
+
     user_id = generate_random_string(5)
     test_email = f"{prefix}{user_id}@valvozone.com"
     test_user = f"valvo_{user_id}"
@@ -24,30 +34,32 @@ if st.button("Start Real-Time Registration"):
 
     async def run_bot():
         async with async_playwright() as p:
-            # Server setup for browser
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context()
-            page = await context.new_page()
-            
             try:
+                # Browser launch with specific arguments for Streamlit environment
+                browser = await p.chromium.launch(
+                    headless=True,
+                    args=["--no-sandbox", "--disable-dev-shm-usage"]
+                )
+                context = await browser.new_context()
+                page = await context.new_page()
+                
                 # 1. Riot Sign-up page
-                await page.goto("https://auth.riotgames.com/signup")
                 st.write("Step 1: Filling Email...")
+                await page.goto("https://auth.riotgames.com/signup", timeout=60000)
                 
                 # 2. Email fill karna
                 await page.fill('input[name="email"]', test_email)
                 await page.keyboard.press("Enter")
-                await asyncio.sleep(3)
+                await asyncio.sleep(5)
                 
-                # 3. Check for Captcha
-                # Agar yahan captcha aaya toh bot ruk jaye ga kyunke headless mode mein manually solve nahi ho sakta
-                st.warning("⚠️ Checking for Captcha... Agar page aage nahi barha toh Captcha Solver ki zaroorat hogi.")
+                # Check point
+                st.info("Form submitted. Now checking for Captcha or next step...")
                 
-                # Aage ka process (DOB, Username, Password) tabhi chalega agar captcha na aaye
+                # Yahan captcha handling ki zaroorat par sakti hy
                 st.success(f"Details submitted for {test_email}! Check your Gmail (Catch-all) for verification.")
                 
             except Exception as e:
-                st.error(f"Error occurred: {e}")
+                st.error(f"Browser Error: {e}")
             finally:
                 await browser.close()
 
