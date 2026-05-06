@@ -1,51 +1,27 @@
 import streamlit as st
 import asyncio
 import os
-import random
-import string
 from playwright.async_api import async_playwright
 
-# --- Functions ---
-def generate_random_string(length=5):
-    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
+async def run_bot_safe(email):
+    # Browser ko start mein hi define kar diya
+    playwright = await async_playwright().start()
+    browser = None
+    try:
+        st.write("Launching browser...")
+        browser = await playwright.chromium.launch(headless=True, args=["--no-sandbox"])
+        page = await browser.new_page()
+        await page.goto("https://auth.riotgames.com/signup")
+        await page.fill('input[name="email"]', email)
+        st.success(f"Email entered for {email}")
+    except Exception as e:
+        st.error(f"Error: {e}")
+    finally:
+        if browser:
+            await browser.close()
+        await playwright.stop()
 
-def install_playwright():
-    st.write("Checking browser drivers...")
+st.title("Valvozone Final Fix")
+if st.button("Test Registration"):
     os.system("playwright install chromium")
-
-async def run_bot(email, username, password):
-    async with async_playwright() as p:
-        browser = None # Pehle se define kar diya taake error na aaye
-        try:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=["--no-sandbox", "--disable-dev-shm-usage"]
-            )
-            context = await browser.new_context()
-            page = await context.new_page()
-            
-            st.info(f"Opening Riot Signup...")
-            await page.goto("https://auth.riotgames.com/signup", timeout=60000)
-            
-            await page.fill('input[name="email"]', email)
-            await page.keyboard.press("Enter")
-            await asyncio.sleep(5)
-            
-            st.success(f"Form submitted for {email}!")
-            
-        except Exception as e:
-            st.error(f"Execution Error: {e}")
-        finally:
-            if browser: # Sirf tab close karein agar browser define hua ho
-                await browser.close()
-
-# --- UI ---
-st.title("🎮 Valvozone Live Bot Control")
-user_prefix = st.sidebar.text_input("Prefix", value="val_")
-
-if st.button("Start Registration"):
-    uid = generate_random_string()
-    final_email = f"{user_prefix}{uid}@valvozone.com"
-    
-    install_playwright()
-    asyncio.run(run_bot(final_email, f"valvo_{uid}", "ValvoZone@123!"))
+    asyncio.run(run_bot_safe("test@valvozone.com"))
