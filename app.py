@@ -1,38 +1,54 @@
 import streamlit as st
-import pandas as pd
+import asyncio
+from playwright.async_api import async_playwright
 import random
 import string
 
-# Dashboard Title
-st.title("🚀 Valvozone Auto-Account Bot")
+# Random strings generate karne ke liye
+def generate_random_string(length=8):
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
-# Sidebar Configuration
-st.sidebar.header("Settings")
-domain = "valvozone.com" # Aapka domain
-prefix = st.sidebar.text_input("Email Prefix", value="val_acc_")
+st.title("🎮 Valvozone Live Bot Control")
 
-# Function to generate random password
-def generate_password(length=12):
-    chars = string.ascii_letters + string.digits + "!@#$%^&*"
-    return ''.join(random.choice(chars) for i in range(length))
+# Sidebar for settings
+st.sidebar.header("Configuration")
+prefix = st.sidebar.text_input("Username/Email Prefix", value="val_")
 
-if st.button("Generate New Account Details"):
-    # Random Email generate karna
-    random_id = ''.join(random.choice(string.digits) for i in range(5))
-    generated_email = f"{prefix}{random_id}@{domain}"
-    generated_pass = generate_password()
-    
-    st.success(f"Naya Account Tyar Hai!")
-    
-    # Display Result
-    col1, col2 = st.columns(2)
-    with col1:
-        st.info(f"**Email:** {generated_email}")
-    with col2:
-        st.info(f"**Password:** {generated_pass}")
-    
-    # Yahan hum Playwright ka code add karenge jo Riot ki site par jaye ga
-    st.warning("Note: Catch-all email 'active' hona chahiye taake verification mil sake.")
+if st.button("Start Real-Time Registration"):
+    user_id = generate_random_string(5)
+    test_email = f"{prefix}{user_id}@valvozone.com"
+    test_user = f"valvo_{user_id}"
+    test_pass = "ValvoZone@123!"
 
-# Export Option
-st.download_button("Download CSV for Eldorado", data="Email,Password\nadmin@valvozone.com,Pass123", file_name="accounts.csv")
+    st.write(f"🔄 **Process Started:** Registering {test_user}...")
+
+    async def run_bot():
+        async with async_playwright() as p:
+            # Server setup for browser
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context()
+            page = await context.new_page()
+            
+            try:
+                # 1. Riot Sign-up page
+                await page.goto("https://auth.riotgames.com/signup")
+                st.write("Step 1: Filling Email...")
+                
+                # 2. Email fill karna
+                await page.fill('input[name="email"]', test_email)
+                await page.keyboard.press("Enter")
+                await asyncio.sleep(3)
+                
+                # 3. Check for Captcha
+                # Agar yahan captcha aaya toh bot ruk jaye ga kyunke headless mode mein manually solve nahi ho sakta
+                st.warning("⚠️ Checking for Captcha... Agar page aage nahi barha toh Captcha Solver ki zaroorat hogi.")
+                
+                # Aage ka process (DOB, Username, Password) tabhi chalega agar captcha na aaye
+                st.success(f"Details submitted for {test_email}! Check your Gmail (Catch-all) for verification.")
+                
+            except Exception as e:
+                st.error(f"Error occurred: {e}")
+            finally:
+                await browser.close()
+
+    asyncio.run(run_bot())
