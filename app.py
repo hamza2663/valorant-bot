@@ -4,17 +4,16 @@ import os
 from playwright.async_api import async_playwright
 
 async def run_bot_safe(email):
-    # Playwright ko start karein
     playwright = await async_playwright().start()
     browser = None
     try:
-        # Streamlit server par browser launch karne ki koshish
+        # Streamlit server par chromium launch
         browser = await playwright.chromium.launch(
             headless=True, 
-            args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+            args=["--no-sandbox", "--disable-gpu"]
         )
         page = await browser.new_page()
-        st.write("🌍 Connecting to Riot Games...")
+        st.write("🌐 Opening Riot Games...")
         await page.goto("https://auth.riotgames.com/signup", timeout=60000)
         
         await page.fill('input[name="email"]', email)
@@ -27,12 +26,12 @@ async def run_bot_safe(email):
             await browser.close()
         await playwright.stop()
 
-st.title("Valvozone Final Fix")
+st.title("Valvozone Bot - Final Test")
 
-if st.button("Start Bot"):
-    with st.spinner("Preparing environment..."):
-        # Ye command missing libraries khud install karega
-        os.system("playwright install chromium")
-        os.system("playwright install-deps") 
+if st.button("Run Registration"):
+    # Pehle check karein ke chromium folder mojood hy ya nahi
+    if not os.path.exists("/home/appuser/.cache/ms-playwright/chromium-1112"): 
+        with st.spinner("Setting up browser..."):
+            os.system("playwright install chromium")
     
     asyncio.run(run_bot_safe("test@valvozone.com"))
