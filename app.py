@@ -4,24 +4,35 @@ import os
 from playwright.async_api import async_playwright
 
 async def run_bot_safe(email):
-    # Browser ko start mein hi define kar diya
+    # Playwright ko start karein
     playwright = await async_playwright().start()
     browser = None
     try:
-        st.write("Launching browser...")
-        browser = await playwright.chromium.launch(headless=True, args=["--no-sandbox"])
+        # Streamlit server par browser launch karne ki koshish
+        browser = await playwright.chromium.launch(
+            headless=True, 
+            args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+        )
         page = await browser.new_page()
-        await page.goto("https://auth.riotgames.com/signup")
+        st.write("🌍 Connecting to Riot Games...")
+        await page.goto("https://auth.riotgames.com/signup", timeout=60000)
+        
         await page.fill('input[name="email"]', email)
-        st.success(f"Email entered for {email}")
+        st.success(f"✅ Success! Email {email} entered.")
+        
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"❌ Browser Error: {e}")
     finally:
         if browser:
             await browser.close()
         await playwright.stop()
 
 st.title("Valvozone Final Fix")
-if st.button("Test Registration"):
-    os.system("playwright install chromium")
+
+if st.button("Start Bot"):
+    with st.spinner("Preparing environment..."):
+        # Ye command missing libraries khud install karega
+        os.system("playwright install chromium")
+        os.system("playwright install-deps") 
+    
     asyncio.run(run_bot_safe("test@valvozone.com"))
