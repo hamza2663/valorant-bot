@@ -5,62 +5,61 @@ import random
 import string
 from playwright.async_api import async_playwright
 
-# --- Browser Driver Installation ---
-# Ye hissa Streamlit par chromium install kare ga agar wo mojood nahi hy
-def install_playwright():
-    os.system("playwright install chromium")
+# --- Global Configurations ---
+PREFIX_DEFAULT = "val_"
+DOMAIN = "valvozone.com"
 
-# Helper function
-def generate_random_string(length=8):
+# --- Functions ---
+def generate_random_string(length=5):
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
+def install_playwright():
+    # Force install only if not present
+    st.write("Checking browser drivers...")
+    os.system("playwright install chromium")
+
+async def run_bot(email, username, password):
+    async with async_playwright() as p:
+        try:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"]
+            )
+            context = await browser.new_context()
+            page = await context.new_page()
+            
+            st.info(f"Opening Riot Signup for: {username}")
+            await page.goto("https://auth.riotgames.com/signup", timeout=60000)
+            
+            # Email Step
+            await page.fill('input[name="email"]', email)
+            await page.keyboard.press("Enter")
+            await asyncio.sleep(5)
+            
+            st.success(f"Form submitted for {email}! Check your master Gmail.")
+            
+        except Exception as e:
+            st.error(f"Execution Error: {e}")
+        finally:
+            await browser.close()
+
+# --- UI ---
 st.title("🎮 Valvozone Live Bot Control")
 
-# Sidebar
-st.sidebar.header("Configuration")
-prefix = st.sidebar.text_input("Username/Email Prefix", value="val_")
+# Sidebar input defined outside any block to avoid UnboundLocalError
+user_prefix = st.sidebar.text_input("Username/Email Prefix", value=PREFIX_DEFAULT)
 
 if st.button("Start Real-Time Registration"):
-    # Pehle browser install karne ki koshish karein
-    with st.spinner("Installing browser drivers... (Pehli baar thora waqt lag sakta hy)"):
-        install_playwright()
+    # Define variables inside the button click context
+    uid = generate_random_string()
+    final_email = f"{user_prefix}{uid}@{DOMAIN}"
+    final_user = f"valvo_{uid}"
+    final_pass = "ValvoZone@123!"
 
-    user_id = generate_random_string(5)
-    test_email = f"{prefix}{user_id}@valvozone.com"
-    test_user = f"valvo_{user_id}"
-    test_pass = "ValvoZone@123!"
-
-    st.write(f"🔄 **Process Started:** Registering {test_user}...")
-
-    async def run_bot():
-        async with async_playwright() as p:
-            try:
-                # Browser launch with specific arguments for Streamlit environment
-                browser = await p.chromium.launch(
-                    headless=True,
-                    args=["--no-sandbox", "--disable-dev-shm-usage"]
-                )
-                context = await browser.new_context()
-                page = await context.new_page()
-                
-                # 1. Riot Sign-up page
-                st.write("Step 1: Filling Email...")
-                await page.goto("https://auth.riotgames.com/signup", timeout=60000)
-                
-                # 2. Email fill karna
-                await page.fill('input[name="email"]', test_email)
-                await page.keyboard.press("Enter")
-                await asyncio.sleep(5)
-                
-                # Check point
-                st.info("Form submitted. Now checking for Captcha or next step...")
-                
-                # Yahan captcha handling ki zaroorat par sakti hy
-                st.success(f"Details submitted for {test_email}! Check your Gmail (Catch-all) for verification.")
-                
-            except Exception as e:
-                st.error(f"Browser Error: {e}")
-            finally:
-                await browser.close()
-
-    asyncio.run(run_bot())
+    st.write(f"🔄 **Target:** {final_user}")
+    
+    # Run installation
+    install_playwright()
+    
+    # Run the bot logic
+    asyncio.run(run_bot(final_email, final_user, final_pass))
